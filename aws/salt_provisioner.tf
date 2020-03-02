@@ -89,7 +89,7 @@ resource "null_resource" "hana_node_provisioner" {
   }
 
   provisioner "file" {
-    source      = var.aws_credentials
+    source      = var.aws_access_key_id == "" || var.aws_secret_access_key == "" ? var.aws_credentials : "/dev/null"
     destination = "/tmp/credentials"
   }
 
@@ -108,7 +108,13 @@ resource "null_resource" "hana_node_provisioner" {
 provider: aws
 region: ${var.aws_region}
 role: hana_node
-devel_mode: ${var.devel_mode}
+aws_cluster_profile: Cluster
+aws_instance_tag: Cluster
+aws_credentials_file: /tmp/credentials
+aws_access_key_id: ${var.aws_access_key_id}
+aws_secret_access_key: ${var.aws_secret_access_key}
+hana_cluster_vip: ${var.hana_cluster_vip}
+route_table: ${aws_route_table.route-table.id}
 scenario_type: ${var.scenario_type}
 name_prefix: ${terraform.workspace}-${var.name}
 host_ips: [${join(", ", formatlist("'%s'", var.host_ips))}]
@@ -124,14 +130,15 @@ iscsi_srv_ip: ${aws_instance.iscsisrv.private_ip}
 init_type: ${var.init_type}
 cluster_ssh_pub:  ${var.cluster_ssh_pub}
 cluster_ssh_key: ${var.cluster_ssh_key}
-qa_mode: ${var.qa_mode}
-hwcct: ${var.hwcct}
 reg_code: ${var.reg_code}
 reg_email: ${var.reg_email}
-monitoring_enabled: ${var.monitoring_enabled}
 reg_additional_modules: {${join(", ", formatlist("'%s': '%s'", keys(var.reg_additional_modules), values(var.reg_additional_modules)))}}
 additional_packages: [${join(", ", formatlist("'%s'", var.additional_packages))}]
 ha_sap_deployment_repo: ${var.ha_sap_deployment_repo}
+monitoring_enabled: ${var.monitoring_enabled}
+devel_mode: ${var.devel_mode}
+qa_mode: ${var.qa_mode}
+hwcct: ${var.hwcct}
 EOF
 
     destination = "/tmp/grains"
@@ -160,11 +167,6 @@ resource "null_resource" "monitoring_provisioner" {
   }
 
   provisioner "file" {
-    source      = var.aws_credentials
-    destination = "/tmp/credentials"
-  }
-
-  provisioner "file" {
     source      = "../salt"
     destination = "/tmp"
   }
@@ -190,6 +192,7 @@ additional_packages: [${join(", ", formatlist("'%s'", var.additional_packages))}
 host_ip: ${var.monitoring_srv_ip}
 ha_sap_deployment_repo: ${var.ha_sap_deployment_repo}
 monitored_hosts: [${join(", ", formatlist("'%s'", var.host_ips))}]
+nw_monitored_hosts: [${join(", ", formatlist("'%s'", var.netweaver_enabled ? var.netweaver_ips : []))}]
 network_domain: "tf.local"
 EOF
 
